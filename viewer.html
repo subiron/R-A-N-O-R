@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Swarm</title>
+    <script>
+
+        let queryParams;
+        let theState = {};
+
+        function showOrNot(value, filter) {
+            let regexp = filter.regexp;
+            let reverse = filter.reverse;
+            var show = true;
+            if (regexp != undefined && regexp !== "") {
+                var re = new RegExp(regexp);
+                var matched = (value + "").match(re)
+                if (!matched || matched.length !== 1) {
+                    show = false;
+                }
+                if (reverse) {
+                    show = !show;
+                }
+            }
+            return show;
+        }
+
+        function addRow(url, originElement, filter, homepage) {
+            let tableRef = document.querySelector("#results");
+            let show = showOrNot(url, filter.url) &&
+                showOrNot(originElement.firstFound, filter.src) &&
+                showOrNot(originElement.statusCode, filter.status) &&
+                showOrNot(originElement.txt, filter.txt);
+
+            if (show) {
+                var newRow = tableRef.insertRow(0);
+
+
+                var newCell0 = newRow.insertCell(0);
+                var txt = document.createTextNode(originElement.txt);
+                newCell0.appendChild(txt);
+
+                var newCell = newRow.insertCell(0);
+
+                var a2 = document.createElement('a');
+                var newText2 = document.createTextNode("src ");
+                a2.appendChild(newText2);
+                a2.href = originElement.firstFound;
+                // newCell.appendChild(document.createTextNode("src: "));
+                newCell.appendChild(a2);
+
+                var a = document.createElement('a');
+                var newText = document.createTextNode(url);//url.substring(homepage.length));
+                a.appendChild(newText);
+                a.href = url;
+                newCell.appendChild(a);
+
+                // newCell.appendChild(document.createElement('br'));
+
+                newCell.setAttribute("title", JSON.stringify(originElement));
+
+                var newCell2 = newRow.insertCell(0);
+                var status = document.createTextNode(originElement.statusCode);
+                newCell2.appendChild(status);
+
+            }
+            return show ? 1 : 0;
+        }
+
+        function initWorld(out) {
+            console.log(out);
+            let
+                filter = {
+                    type: theState._type,
+                    url: {
+                        regexp: theState._url,
+                        reverse: document.querySelector("#_url_r").checked
+                    },
+                    src: {
+                        regexp: theState._src,
+                        reverse: document.querySelector("#_src_r").checked
+                    },
+                    status: {
+                        regexp: theState._status,
+                        reverse: document.querySelector("#_status_r").checked,
+                    },
+                    txt: {
+                        regexp: theState._text,
+                        reverse: document.querySelector("#_text_r").checked,
+                    },
+                };
+            let table = document.querySelector("tbody");
+            if (table)
+                table.remove();
+
+            let result = 0;
+            let totalNo = 0;
+            let data = out[filter.type];
+            for (var property in data) {
+                if (data.hasOwnProperty(property)) {
+                    totalNo++;
+                    result = result + addRow(property, data[property], filter, out.homePage);
+                }
+            }
+            let a = result + "/" + totalNo + " ";
+            document.querySelector("#resultsNo").innerHTML = a + "(" +
+                Math.round((result / totalNo) * 100) + "%)";
+        }
+
+        function updateState() {
+            var a = new FormData(document.querySelector('form'));
+            let newUrl = "?";
+            for (var key of a.entries()) {
+                theState[key[0]] = key[1];
+                newUrl = newUrl + key[0] + "=" + key[1] + "&";
+            }
+            window.history.pushState('state', 'change', newUrl);
+
+        }
+
+        function go() {
+            updateState();
+            fetch(theState._file + ".json")
+                .then(response =>
+                    response.json()
+                ).then(out => initWorld(out));
+        }
+
+        function updateFormField(key, value) {
+            let input = document.querySelector("#" + key);
+            if (input.type === "checkbox") {
+                if (value === "yes") {
+                    input.checked = true;
+                }
+            } else {
+                input.value = value;
+            }
+        }
+
+        function initParams() {
+            queryParams = new URLSearchParams(window.location.search);
+            for (var key of queryParams.entries()) {
+                theState[key[0]] = key[1];
+                updateFormField(key[0], key[1]);
+            }
+        }
+
+        function onloadReady() {
+            initParams();
+            go();
+        }
+    </script>
+</head>
+<body onload="onloadReady()">
+<style>
+    .header {
+        margin: 5px;
+        padding: 10px;
+        background: #555;
+        color: #f1f1f1;
+    }
+
+    .content {
+        padding: 16px;
+    }
+
+    .sticky {
+        position: fixed;
+        top: 0;
+        width: 100%
+    }
+
+    .sticky + .content {
+        padding-top: 102px;
+    }
+
+    form {
+        display: flex;
+    }
+
+    label {
+        margin-right: 12px;
+        margin-left: 12px;
+    }
+
+    table {
+        border-spacing: 0;
+        width: 100%;
+        border: 1px solid #ddd;
+    }
+
+    th, td {
+        text-align: left;
+        padding: 4px;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f2f2f2
+    }
+</style>
+
+<div class="header" id="myHeader">
+
+    <form action="/#">
+        <input id="_file" name="_file" type="text" oninput="go()"/>
+
+        <select id="_type" name="_type" oninput="go()">
+            <option value="origin">origin</option>
+            <option value="other">other</option>
+            <option value="media">media</option>
+            <option value="mailto">mailto</option>
+        </select>
+        <input id="_url" name="_url" type="text" placeholder="URL" oninput="go()"/>
+        <input id="_url_r" name="_url_r" title="Reverse" type="checkbox" oninput="go()" value="yes"/>
+
+        <input id="_src" name="_src" type="text" placeholder="SRC" oninput="go()" value="" oninput="go()" value="yes"/>
+        <input id="_src_r" name="_src_r" title="Reverse" type="checkbox" oninput="go()" value="yes"/>
+
+        <input id="_text" name="_text" type="text" placeholder="Link Text" oninput="go()"/>
+        <input id="_text_r" name="_text_r" title="Reverse" type="checkbox" oninput="go()" value="yes"/><br>
+
+        <input id="_status" name="_status" type="text" placeholder="Status" oninput="go()"/>
+        <input id="_status_r" name="_status_r" title="Reverse" type="checkbox" oninput="go()" value="yes"/>
+        <label id="resultsNo"></label>
+    </form>
+
+</div>
+<div>
+    <table id="results" style="width:100%">
+        <tr>
+            <th>url</th>
+            <th>status</th>
+            <th>Age</th>
+        </tr>
+    </table>
+</div>
+
+<script>
+    /* sticky header script < */
+
+    // When the user scrolls the page, execute myFunction
+    window.onscroll = function () {
+        myFunction()
+    };
+    // Get the header
+    var header = document.getElementById("myHeader");
+    // Get the offset position of the navbar
+    var sticky = header.offsetTop;
+
+    // Add the sticky class to the header when you reach its scroll position. Remove "sticky" when you leave the scroll position
+    function myFunction() {
+        if (window.pageYOffset > sticky) {
+            header.classList.add("sticky");
+        } else {
+            header.classList.remove("sticky");
+        }
+    }
+
+    /* sticky header script > */
+
+</script>
+</body>
+</html>
