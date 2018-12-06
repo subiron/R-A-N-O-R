@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Swarm</title>
     <script>
-
         let queryParams;
         let theState = {};
 
@@ -123,7 +122,14 @@
             fetch(theState._file + ".json")
                 .then(response =>
                     response.json()
-                ).then(out => initWorld(out));
+                ).then(out => initWorld(out)).catch(function () {
+                fetch("https://raw.githubusercontent.com/subiron/R-A-N-O-R/master/" + theState._file + ".json")
+                    .then(response =>
+                        response.json()
+                    ).then(out => initWorld(out)
+                )
+
+            })
         }
 
         function updateFormField(key, value) {
